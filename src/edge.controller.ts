@@ -7,7 +7,7 @@ import { AttendeeRegisterPayload } from './dto/edge-event.dto';
 import { ExperiencePlayPayload } from './dto/edge-experience.dto';
 import { AttendeeStatusDto, RedeptionsPointsDto } from './dto/edge-redemption';
 
-@Controller('local')
+@Controller('edge')
 export class EdgeController {
   constructor(
     private readonly edgeService: EdgeService,
@@ -42,7 +42,7 @@ export class EdgeController {
   ) {
     return this.edgeService.redeemPoints(dto);
   }
-  
+
   @Post('attendees_status')
   async attendeeStatus(
     @Body() dto: AttendeeStatusDto

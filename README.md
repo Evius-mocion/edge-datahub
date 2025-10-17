@@ -20,18 +20,18 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+# Data Hub Local - Endpoints
 
-## Description
+Este servicio expone una API local para gestionar asistentes, experiencias y redenciones para eventos. Base path: `api/edge`.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-## Project setup
+## Instalar dependencias
 
 ```bash
 $ npm install
 ```
 
-## Compile and run the project
+## Run project
 
 ```bash
 # development
@@ -44,54 +44,69 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-## Run tests
+Endpoints principales
+- POST /local/attendees/register
+  - Registra un asistente localmente.
+  - Payload (JSON):
+    {
+      "eventId": "string",
+      "fullName": "Nombre Apellido",
+      "email": "user@example.com",
+      "country": "PAIS",
+      "city": "CIUDAD",
+      "properties": {}
+    }
+  - Respuesta: mensaje y objeto attendee. Genera un código determinístico basado en el email.
 
-```bash
-# unit tests
-$ npm run test
+- GET /local/attendees/:code
+  - Buscar asistente por código.
+  - Respuesta: mensaje y objeto attendee.
 
-# e2e tests
-$ npm run test:e2e
+- POST /local/experience
+  - Registrar o actualizar una jugada en una experiencia.
+  - Payload (JSON):
+    {
+      "eventExperienceId": "string",
+      "attendeeId": "string",
+      "play_timestamp": "2025-10-17T12:00:00.000Z",
+      "data": {},
+      "bonusScore": 0,
+      "modePoints": "firstTry" | "betterTry",
+      "score": 100
+    }
 
-# test coverage
-$ npm run test:cov
-```
+- POST /local/redemption
+  - Redimir puntos para un asistente.
+  - Payload (JSON):
+    {
+      "eventId": "string",
+      "attendeeId": "string",
+      "pointsRedeemed": 100,
+      "reason": "Motivo de la redención"
+    }
 
-## Deployment
+- POST /local/attendees_status
+  - Obtener estado de un asistente (por attendeeId, code o email).
+  - Payload (JSON) ejemplo:
+    { "attendeeId": "string" }
+    o { "code": "12345" }
+    o { "email": "user@example.com" }
+  - Respuesta incluye puntos totales calculados localmente.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- POST /local/sync
+  - Inicia sincronización con la nube para un evento.
+  - Payload:
+    { "eventId": "string" }
+  - Respuesta: { message: 'Sync initiated', eventId }
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- GET /local/health
+  - Comprueba estado local y conectividad con la nube.
+  - Respuesta incluye cloudConnected y timestamp.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Notas
+- El código generado para asistentes es determinístico para el mismo email (normalizar mayúsculas/minúsculas o espacios afecta el resultado).
+- Validaciones y errores retornan excepciones HTTP apropiadas (400/404).
+- Para pruebas con curl, usar Content-Type: application/json y el body JSON correspondiente.
 
 ## License
 
