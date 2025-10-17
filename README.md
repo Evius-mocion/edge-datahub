@@ -66,7 +66,7 @@ docker compose up -d
 - El servicio NestJS expone por defecto el puerto 3000.
 
 Endpoints principales
-- POST /local/attendees/register
+- POST /attendees/register
   - Registra un asistente localmente.
   - Payload (JSON):
     {
@@ -79,11 +79,11 @@ Endpoints principales
     }
   - Respuesta: mensaje y objeto attendee. Genera un código determinístico basado en el email.
 
-- GET /local/attendees/:code
+- GET /attendees/:code
   - Buscar asistente por código.
   - Respuesta: mensaje y objeto attendee.
 
-- POST /local/experience
+- POST /experience
   - Registrar o actualizar una jugada en una experiencia.
   - Payload (JSON):
     {
@@ -96,7 +96,7 @@ Endpoints principales
       "score": 100
     }
 
-- POST /local/redemption
+- POST /redemption
   - Redimir puntos para un asistente.
   - Payload (JSON):
     {
@@ -106,7 +106,7 @@ Endpoints principales
       "reason": "Motivo de la redención"
     }
 
-- POST /local/attendees_status
+- POST /attendees_status
   - Obtener estado de un asistente (por attendeeId, code o email).
   - Payload (JSON) ejemplo:
     { "attendeeId": "string" }
@@ -114,13 +114,13 @@ Endpoints principales
     o { "email": "user@example.com" }
   - Respuesta incluye puntos totales calculados localmente.
 
-- POST /local/sync
+- POST /sync
   - Inicia sincronización con la nube para un evento.
   - Payload:
     { "eventId": "string" }
   - Respuesta: { message: 'Sync initiated', eventId }
 
-- GET /local/health
+- GET /health
   - Comprueba estado local y conectividad con la nube.
   - Respuesta incluye cloudConnected y timestamp.
 

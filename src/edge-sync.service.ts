@@ -89,7 +89,6 @@ export class EdgeSyncService {
       this.logger.log(`Synced event details for ${eventId}`);
     } catch (error) {
       this.logger.error(`Error syncing event details for ${eventId}:`, error);
-      throw error;
     }
   }
 
@@ -124,7 +123,6 @@ export class EdgeSyncService {
       this.logger.log(`Synced ${attendees.length} attendees for event ${eventId}`);
     } catch (error) {
       this.logger.error(`Error syncing attendees for event ${eventId}:`, error);
-      throw error;
     }
   }
 
