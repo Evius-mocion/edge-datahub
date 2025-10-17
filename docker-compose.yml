@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    container_name: ${PSQL_DATABASE_HOST}
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${PSQL_DATABASE_USER}
+      POSTGRES_PASSWORD: ${PSQL_DATABASE_PASSWORD}
+      POSTGRES_DB: ${PSQL_DATABASE}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  main-service:
+    build: .
+    container_name: service-local
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    env_file:
+      - .env
+    depends_on:
+      - db
+    command: "npm run start:dev"
+
+volumes:
+  postgres_data:
+    driver: local
