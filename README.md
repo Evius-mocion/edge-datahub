@@ -31,7 +31,7 @@ Este servicio expone una API local para gestionar asistentes, experiencias y red
 $ npm install
 ```
 
-## Run project
+## Correr projecto
 
 ```bash
 # development
@@ -43,6 +43,27 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
+
+
+## Usar con Docker
+
+Instrucciones rápidas para ejecutar la aplicación usando Docker.
+
+1. Construir la imagen:
+```bash
+docker build -t data-hub-local:latest .  
+```
+or
+```bash
+docker compose up --build -d
+```
+
+2. Ejecutar el contenedor (ejemplo):
+```bash
+docker compose up -d
+```
+- Ajustar API_BASE y TOKEN según su entorno.
+- El servicio NestJS expone por defecto el puerto 3000.
 
 Endpoints principales
 - POST /local/attendees/register
