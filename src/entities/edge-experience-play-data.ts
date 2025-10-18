@@ -1,4 +1,6 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, Generated } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, Generated, ManyToOne, JoinColumn } from 'typeorm';
+import { EdgeEventExperience } from './edge-experience.entity';
+import { EdgeAttendee } from './edge-attendee.entity';
 
 @Entity('edge_experience_play_data')
 export class EdgExperiencePlayData {
@@ -9,11 +11,19 @@ export class EdgExperiencePlayData {
 	@Column({ type: 'uuid' })
 	eventExperienceId: string;
 
+    @ManyToOne(() => EdgeEventExperience)
+    @JoinColumn({ name: 'eventExperienceId' })
+    eventExperience: EdgeEventExperience;
+
 	@Column({ type: 'uuid' , nullable: false })
 	eventId: string;
 	
 	@Column({ type: 'uuid' , nullable: false })
 	attendeeId: string;
+
+	@ManyToOne(() => EdgeAttendee)
+  	@JoinColumn({ name: 'attendeeId' })
+  	attendee: EdgeAttendee;
 
 	@Column({ type: 'timestamp', nullable: false })
 	play_timestamp: Date;
@@ -33,8 +43,6 @@ export class EdgExperiencePlayData {
 	@Column({ type: 'boolean', nullable: false, default: false })
 	sync: boolean;
 
-	@CreateDateColumn({ type: 'timestamp' })
-	createAt: Date;
 	
 	@Column({ type: 'timestamp', nullable: true })
 	lastSyncedAt: Date;

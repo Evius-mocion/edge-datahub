@@ -10,6 +10,7 @@ import { AttendeeRegisterPayload } from './dto/edge-event.dto';
 import { generate_code_by_email } from './common/utils';
 import { ExperiencePlayPayload } from './dto/edge-experience.dto';
 import { AttendeeStatusDto, RedeptionsPointsDto } from './dto/edge-redemption';
+import { CheckInType } from './types/attendee.type';
 
 @Injectable()
 export class EdgeService {
@@ -48,7 +49,9 @@ export class EdgeService {
       fullName,
       email,
       sync: false,
-      checkInAt : new Date().toISOString() ,
+      origin: CheckInType.STATION,
+      checkInAt : new Date().toISOString(),
+      checkInType: CheckInType.STATION,
       country,
       city,
       properties,
@@ -82,7 +85,7 @@ export class EdgeService {
 
   // Buscar experiencia y asistente en paralelo
   const [eventExperience, attendee] = await Promise.all([
-    this.experienceRepo.findOne({ where: { experienceId: eventExperienceId } }),
+    this.experienceRepo.findOne({ where: { id: eventExperienceId } }),
     this.attendeeRepo.findOne({ where: { id: attendeeId } }),
   ]);
 
@@ -129,7 +132,7 @@ export class EdgeService {
     play_timestamp: new Date(play_timestamp),
     data,
     bonusScore,
-    createAt: new Date(),
+    created_at: new Date(),
     score,
     sync: false,
     eventId: eventExperience.eventId,

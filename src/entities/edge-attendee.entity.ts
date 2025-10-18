@@ -1,3 +1,4 @@
+import { CheckInType } from 'src/types/attendee.type';
 import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Generated } from 'typeorm';
 
 @Entity('edge_attendees')
@@ -11,6 +12,23 @@ export class EdgeAttendee {
 
 	@Column({ type: 'uuid' })
 	eventId: string;
+
+	@Column({
+		type: 'enum',
+		enum: CheckInType,
+		nullable: true,
+		default: CheckInType.STATION
+	})
+	origin: CheckInType;
+
+
+	@Column({
+		type: 'enum',
+		enum: CheckInType,
+		nullable: true,
+		default: CheckInType.STATION
+	})
+	checkInType: CheckInType; 
 
 	@Column({ nullable: false })
 	fullName: string;

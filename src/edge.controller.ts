@@ -57,6 +57,13 @@ export class EdgeController {
     await this.syncService.syncEventFromCloud(dto.eventId);
     return { message: 'Sync initiated', eventId: dto.eventId };
   }
+  
+  @Post('upload')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async uploadData() {
+    await this.syncService.uploadDataTocloud();
+    return { message: 'cloud Sync finished'};
+  }
 
   @Get('health')
   async health() {

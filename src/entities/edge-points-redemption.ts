@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, Generated } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, Generated, ManyToOne, JoinColumn } from 'typeorm';
+import { EdgeAttendee } from './edge-attendee.entity';
 
 @Entity('edge_points_redemption')
 export class EdgePointsRedemption {
@@ -11,6 +12,10 @@ export class EdgePointsRedemption {
 
 	@Column({ type: 'uuid', nullable: false })
 	attendeeId: string;
+
+	@ManyToOne(() => EdgeAttendee)
+	@JoinColumn({ name: 'attendeeId' })
+	attendee: EdgeAttendee;
 
 	@Column({ type: 'float', nullable: false })
 	pointsRedeemed: number;
