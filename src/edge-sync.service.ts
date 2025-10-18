@@ -10,6 +10,7 @@ import { firstValueFrom, timeout, catchError } from 'rxjs';
 import { EdgePointsRedemption } from './entities/edge-points-redemption';
 import { generate_code_by_email } from './common/utils';
 import { chunk } from 'lodash';
+import { Cron, CronExpression } from '@nestjs/schedule';
 @Injectable()
 export class EdgeSyncService {
   private readonly logger = new Logger(EdgeSyncService.name);
@@ -28,9 +29,24 @@ export class EdgeSyncService {
     private readonly pointsRedemptionRepo: Repository<EdgePointsRedemption>,
   ) {}
 
-  /**
-   * Sync event data from cloud to local edge database
-   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleHourlySync() {
+    this.logger.log('⏰ Ejecutando sincronización automática...');
+    // Aquí va tu lógica (puedes inyectar otros servicios/repos)
+    const connected = await this.checkCloudConnection();
+
+    if (connected) {
+      this.logger.log(
+        '☁️ Conexión establecida con la nube. Subiendo datos pendientes...',
+      );
+      await this.uploadDataTocloud();
+    } else {
+      this.logger.warn(
+        '⚠️ No se pudo establecer conexión con la nube. Se reintentará en el próximo ciclo.',
+      );
+    }
+  }
+
   async syncEventFromCloud(eventId: string): Promise<void> {
     const apiBase = process.env.API_BASE;
     if (!apiBase) {
@@ -82,8 +98,8 @@ export class EdgeSyncService {
 
     try {
       await this.uploadAttendees(event?.id, apiBase, headers);
-      await this.uploadPlayData(event?.id, apiBase, headers)
-      await this.uploadRedemptions(event?.id, apiBase, headers)
+      await this.uploadPlayData(event?.id, apiBase, headers);
+      await this.uploadRedemptions(event?.id, apiBase, headers);
       this.logger.log(`✅ Successfully synced event ${event?.id}`);
     } catch (error) {
       this.logger.error(`❌ Error syncing event ${event?.id}:`, error);
@@ -152,9 +168,14 @@ export class EdgeSyncService {
             await this.attendeeRepo.save(updates);
           }
 
-          this.logger.log(`✅ [ATTENDEE] Lote ${batchNum} sincronizado correctamente`);
+          this.logger.log(
+            `✅ [ATTENDEE] Lote ${batchNum} sincronizado correctamente`,
+          );
         } catch (err) {
-          this.logger.error(`❌ [ATTENDEE] Error al subir lote ${batchNum}:`, err);
+          this.logger.error(
+            `❌ [ATTENDEE] Error al subir lote ${batchNum}:`,
+            err,
+          );
         }
 
         batchNum++;
@@ -172,172 +193,196 @@ export class EdgeSyncService {
   }
 
   private async uploadPlayData(
-  eventId: string,
-  apiBase: string,
-  headers: Record<string, string>,
-) {
-  const url = `${apiBase}/experience-play-data/massive_upload`;
+    eventId: string,
+    apiBase: string,
+    headers: Record<string, string>,
+  ) {
+    const url = `${apiBase}/experience-play-data/massive_upload`;
 
-  try {
-    // 🔹 Buscar registros pendientes de sincronizar
-    const recordsToUpload = await this.experiencePlayData.find({
-      where: { eventId, sync: false },
-      relations: ['eventExperience','attendee']
-    });
+    try {
+      // 🔹 Buscar registros pendientes de sincronizar
+      const recordsToUpload = await this.experiencePlayData.find({
+        where: { eventId, sync: false },
+        relations: ['eventExperience', 'attendee'],
+      });
 
-    if (!recordsToUpload.length) {
-      this.logger.log(`✅ [PLAY-DATA] No hay registros de play data pendientes para el evento ${eventId}`);
-      return;
-    }
-
-    this.logger.debug(
-      `[PLAY-DATA] Se van a subir ${recordsToUpload.length} registros de play data para el evento ${eventId}`,
-    );
-    // 🚀 Dividir en lotes de 1000
-    const batches = chunk(recordsToUpload, 1000);
-    let batchNum = 1;
-
-    for (const batch of batches) {
-      this.logger.log(
-        `🔹[PLAY-DATA] Subiendo lote ${batchNum} de ${batches.length} (${batch.length} registros)...`,
-      );
-
-      try {
-          const payload = batch.map((record) => ({
-          localId: record.id,
-          eventExperienceId: record.eventExperienceId,
-          eventId,
-          experienceId : record.eventExperience.experienceId,
-          attendeeId : record.attendee.originalId,
-          play_timestamp: record.play_timestamp,
-          data: record.data,
-          score: record.score,
-          bonusScore: record.bonusScore,
-          created_at : record.created_at
-        }));
-
-        // 🔸 Enviar lote al endpoint remoto
-        const { data } = await firstValueFrom(
-          this.http
-            .post(url, { playData: payload , eventId }, { headers })
-            .pipe(timeout(15000)),
+      if (!recordsToUpload.length) {
+        this.logger.log(
+          `✅ [PLAY-DATA] No hay registros de play data pendientes para el evento ${eventId}`,
         );
-
-        // 🔹 La API debería devolver algo como: { success: true, playData: [{ id, attendeeId, ... }] }
-        const uploadedRecords = data?.success || [];
-        // 🔹 Preparar cambios para guardar en la base local
-        const updates = uploadedRecords
-          .map((uploaded) => {
-            const local = batch.find((r) => r.id === uploaded.localId);
-            if (!local) return null;
-            return {
-              id: local.id,
-              sync: true,
-              lastSyncedAt: new Date(),
-            };
-          })
-          .filter(Boolean);
-
-        if (updates.length > 0) {
-          await this.experiencePlayData.save(updates);
-        }
-
-        this.logger.log(`✅[PLAY-DATA] Lote ${batchNum} sincronizado correctamente`);
-      } catch (err) {
-        this.logger.error(`❌ [PLAY-DATA] Error al subir lote ${batchNum}:`, err);
+        return;
       }
 
-      batchNum++;
-    }
+      this.logger.debug(
+        `[PLAY-DATA] Se van a subir ${recordsToUpload.length} registros de play data para el evento ${eventId}`,
+      );
+      // 🚀 Dividir en lotes de 1000
+      const batches = chunk(recordsToUpload, 1000);
+      let batchNum = 1;
 
-    this.logger.log(`✔️[PLAY-DATA]  Proceso completado: ${recordsToUpload.length} registros subidos para el evento ${eventId}`);
-  } catch (error) {
-    this.logger.error(`❌[PLAY-DATA] Error general subiendo play data para el evento ${eventId}:`, error);
+      for (const batch of batches) {
+        this.logger.log(
+          `🔹[PLAY-DATA] Subiendo lote ${batchNum} de ${batches.length} (${batch.length} registros)...`,
+        );
+
+        try {
+          const payload = batch.map((record) => ({
+            localId: record.id,
+            eventExperienceId: record.eventExperienceId,
+            eventId,
+            experienceId: record.eventExperience.experienceId,
+            attendeeId: record.attendee.originalId,
+            play_timestamp: record.play_timestamp,
+            data: record.data,
+            score: record.score,
+            bonusScore: record.bonusScore,
+            created_at: record.created_at,
+          }));
+
+          // 🔸 Enviar lote al endpoint remoto
+          const { data } = await firstValueFrom(
+            this.http
+              .post(url, { playData: payload, eventId }, { headers })
+              .pipe(timeout(15000)),
+          );
+
+          // 🔹 La API debería devolver algo como: { success: true, playData: [{ id, attendeeId, ... }] }
+          const uploadedRecords = data?.success || [];
+          // 🔹 Preparar cambios para guardar en la base local
+          const updates = uploadedRecords
+            .map((uploaded) => {
+              const local = batch.find((r) => r.id === uploaded.localId);
+              if (!local) return null;
+              return {
+                id: local.id,
+                sync: true,
+                lastSyncedAt: new Date(),
+              };
+            })
+            .filter(Boolean);
+
+          if (updates.length > 0) {
+            await this.experiencePlayData.save(updates);
+          }
+
+          this.logger.log(
+            `✅[PLAY-DATA] Lote ${batchNum} sincronizado correctamente`,
+          );
+        } catch (err) {
+          this.logger.error(
+            `❌ [PLAY-DATA] Error al subir lote ${batchNum}:`,
+            err,
+          );
+        }
+
+        batchNum++;
+      }
+
+      this.logger.log(
+        `✔️[PLAY-DATA]  Proceso completado: ${recordsToUpload.length} registros subidos para el evento ${eventId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌[PLAY-DATA] Error general subiendo play data para el evento ${eventId}:`,
+        error,
+      );
+    }
   }
-}
   private async uploadRedemptions(
-  eventId: string,
-  apiBase: string,
-  headers: Record<string, string>,
-) {
-  const url = `${apiBase}/points-redemption/massive_upload`;
+    eventId: string,
+    apiBase: string,
+    headers: Record<string, string>,
+  ) {
+    const url = `${apiBase}/points-redemption/massive_upload`;
 
-  try {
-    // 🔹 Buscar registros pendientes de sincronizar
-    const recordsToUpload = await this.pointsRedemptionRepo.find({
-      where: { eventId, sync: false },
-      relations: ['attendee']
-    });
+    try {
+      // 🔹 Buscar registros pendientes de sincronizar
+      const recordsToUpload = await this.pointsRedemptionRepo.find({
+        where: { eventId, sync: false },
+        relations: ['attendee'],
+      });
 
-    if (!recordsToUpload.length) {
-      this.logger.log(`✅ [REDEMPTIONS] No hay registros de redepmtion pendientes para el evento ${eventId}`);
-      return;
-    }
-
-    this.logger.debug(
-      `[REDEMPTIONS] Se van a subir ${recordsToUpload.length} registros de redepmtion para el evento ${eventId}`,
-    );
-    // 🚀 Dividir en lotes de 1000
-    const batches = chunk(recordsToUpload, 1000);
-    let batchNum = 1;
-
-    for (const batch of batches) {
-      this.logger.log(
-        `🔹[REDEMPTIONS]  Subiendo lote ${batchNum} de ${batches.length} (${batch.length} registros)...`,
-      );
-
-      try {
-          const payload = batch.map((record) => ({
-          attendeeEventId : eventId,
-          attendeeUserId: record.attendee.userId,
-          eventId,
-          metadata: record.metadata,
-				  reason: record.reason,
-				  pointsRedeemed : record.pointsRedeemed,
-				  redemptionDate : record.redemptionDate,
-          localId: record.id,
-        }));
-
-        // 🔸 Enviar lote al endpoint remoto
-        const { data } = await firstValueFrom(
-          this.http
-            .post(url, { playData: payload , eventId }, { headers })
-            .pipe(timeout(15000)),
+      if (!recordsToUpload.length) {
+        this.logger.log(
+          `✅ [REDEMPTIONS] No hay registros de redepmtion pendientes para el evento ${eventId}`,
         );
-
-        console.log('data')
-        // 🔹 La API debería devolver algo como: { success: true, playData: [{ id, attendeeId, ... }] }
-        const uploadedRecords = data?.success || [];
-        // 🔹 Preparar cambios para guardar en la base local
-        const updates = uploadedRecords
-          .map((uploaded) => {
-            const local = batch.find((r) => r.id === uploaded.localId);
-            if (!local) return null;
-            return {
-              id: local.id,
-              sync: true,
-              lastSyncedAt: new Date(),
-            };
-          })
-          .filter(Boolean);
-
-        if (updates.length > 0) {
-          await this.pointsRedemptionRepo.save(updates);
-        }
-
-        this.logger.log(`✅ [REDEMPTIONS] Lote ${batchNum} sincronizado correctamente`);
-      } catch (err) {
-        this.logger.error(`❌ [REDEMPTIONS] Error al subir lote ${batchNum}:`, err);
+        return;
       }
 
-      batchNum++;
-    }
+      this.logger.debug(
+        `[REDEMPTIONS] Se van a subir ${recordsToUpload.length} registros de redepmtion para el evento ${eventId}`,
+      );
+      // 🚀 Dividir en lotes de 1000
+      const batches = chunk(recordsToUpload, 1000);
+      let batchNum = 1;
 
-    this.logger.log(`✔️[REDEMPTIONS]  Proceso completado: ${recordsToUpload.length} registros subidos para el evento ${eventId}`);
-  } catch (error) {
-    this.logger.error(`❌ [REDEMPTIONS] Error general subiendo play data para el evento ${eventId}:`, error);
+      for (const batch of batches) {
+        this.logger.log(
+          `🔹[REDEMPTIONS]  Subiendo lote ${batchNum} de ${batches.length} (${batch.length} registros)...`,
+        );
+
+        try {
+          const payload = batch.map((record) => ({
+            attendeeEventId: eventId,
+            attendeeUserId: record.attendee.userId,
+            eventId,
+            metadata: record.metadata,
+            reason: record.reason,
+            pointsRedeemed: record.pointsRedeemed,
+            redemptionDate: record.redemptionDate,
+            localId: record.id,
+          }));
+
+          // 🔸 Enviar lote al endpoint remoto
+          const { data } = await firstValueFrom(
+            this.http
+              .post(url, { playData: payload, eventId }, { headers })
+              .pipe(timeout(15000)),
+          );
+
+          console.log('data');
+          // 🔹 La API debería devolver algo como: { success: true, playData: [{ id, attendeeId, ... }] }
+          const uploadedRecords = data?.success || [];
+          // 🔹 Preparar cambios para guardar en la base local
+          const updates = uploadedRecords
+            .map((uploaded) => {
+              const local = batch.find((r) => r.id === uploaded.localId);
+              if (!local) return null;
+              return {
+                id: local.id,
+                sync: true,
+                lastSyncedAt: new Date(),
+              };
+            })
+            .filter(Boolean);
+
+          if (updates.length > 0) {
+            await this.pointsRedemptionRepo.save(updates);
+          }
+
+          this.logger.log(
+            `✅ [REDEMPTIONS] Lote ${batchNum} sincronizado correctamente`,
+          );
+        } catch (err) {
+          this.logger.error(
+            `❌ [REDEMPTIONS] Error al subir lote ${batchNum}:`,
+            err,
+          );
+        }
+
+        batchNum++;
+      }
+
+      this.logger.log(
+        `✔️[REDEMPTIONS]  Proceso completado: ${recordsToUpload.length} registros subidos para el evento ${eventId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ [REDEMPTIONS] Error general subiendo play data para el evento ${eventId}:`,
+        error,
+      );
+    }
   }
-}
 
   private async syncEventDetails(
     eventId: string,

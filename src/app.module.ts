@@ -10,9 +10,10 @@ import { EdgeEventExperience } from './entities/edge-experience.entity';
 import { EdgExperiencePlayData } from './entities/edge-experience-play-data';
 import { EdgePointsRedemption } from './entities/edge-points-redemption';
 import { ConfigModule } from "@nestjs/config";
-
+import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
+     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
