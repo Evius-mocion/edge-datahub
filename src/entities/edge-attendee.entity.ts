@@ -45,6 +45,14 @@ export class EdgeAttendee {
 	@Column({ nullable: true })
 	city: string;
 
+	@Column({ nullable: true })
+	plataform: string;
+
+	@Column({ nullable: true })
+	browser: string;
+
+	
+
 	@Column({ type: 'timestamptz', nullable: true })
 	checkInAt: Date | null; 
 

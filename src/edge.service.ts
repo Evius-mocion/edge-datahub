@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { EdgeAttendee } from './entities/edge-attendee.entity';
 import { EdgeEvent } from './entities/edge-event.entity';
 import { EdgeEventExperience } from './entities/edge-experience.entity';
@@ -79,7 +79,6 @@ export class EdgeService {
     play_timestamp,
     data,
     bonusScore,
-    modePoints = 'firstTry',
     score,
   } = dto;
 
@@ -101,28 +100,29 @@ export class EdgeService {
 
   // Buscar si ya jugó
   const existingPlay = await this.experiencePlayData.findOne({
-    where: { eventExperienceId, attendeeId, eventId: eventExperience.eventId },
+    where: { eventExperienceId, attendeeId, eventId: eventExperience.eventId,
+      score : MoreThan(0)
+    },
   });
-
-  // Si ya jugó, actualiza solo si aplica
+  
   if (existingPlay) {
-    const shouldUpdate =
-      modePoints === 'betterTry' && score > (existingPlay.score ?? 0);
-
-    if (shouldUpdate) {
-      const updatedPlay = this.experiencePlayData.merge(existingPlay, {
-        score,
-        bonusScore: bonusScore ?? existingPlay.bonusScore,
-        data: data ?? existingPlay.data,
+       // Crear nuevo registro si no existe
+      const newPlaywithoutScore = this.experiencePlayData.create({
+        eventExperienceId,
+        attendeeId,
         play_timestamp: new Date(play_timestamp),
+        data,
+        bonusScore,
+        created_at: new Date(),
+        score : 0,
+        sync: false,
+        eventId: eventExperience.eventId,
       });
 
-      await this.experiencePlayData.save(updatedPlay);
+      const savedPlay = await this.experiencePlayData.save(newPlaywithoutScore);
 
-      return { message: 'Experience play updated successfully', play: updatedPlay };
-    }
-
-    return { message: 'Experience play already logged', play: existingPlay };
+      return { message: 'Experience play updated successfully', play: savedPlay };
+    
   }
 
   // Crear nuevo registro si no existe
