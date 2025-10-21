@@ -1,6 +1,6 @@
-# 🎮 Edge DataHub SDK - Guía Rápida
+# 🎮 Edge DataHub SDK - Guía de Uso
 
-**Para desarrolladores que necesitan integrar con el sistema de gamificación del evento**
+**SDK simple para integrar con el sistema de gamificación del evento**
 
 ## 🚀 Instalación Rápida
 
@@ -10,107 +10,116 @@
 ```
 
 ```javascript
-// Configurar SDK
+// Configurar SDK - REQUERIDO: eventId y eventExperienceId
 const sdk = new EdgeDataHubSDK({
   baseUrl: 'http://localhost:3000/edge', // URL de tu servidor Edge DataHub
+  eventId: 'event-uuid-123', // REQUERIDO: ID del evento
+  eventExperienceId: 'experience-uuid-456', // REQUERIDO: ID de la experiencia
 });
 ```
 
-## 📋 Operaciones Disponibles
+## 📋 Servicios Disponibles
 
-### ✅ **1. REGISTRO DE ASISTENTE** (CRÍTICO - No se puede encolar)
+### **1. Registrar Asistente**
+
+Registra un nuevo asistente en el evento y genera un código único para identificarlo.
 
 ```javascript
-try {
-  const response = await sdk.registerAttendee({
-    eventId: 'event-uuid-123',
-    fullName: 'Juan Pérez',
-    email: 'juan@example.com',
-    country: 'Colombia',
-    city: 'Bogotá',
-    properties: {
-      company: 'Mi Empresa',
-      role: 'Developer',
-    },
-  });
+const response = await sdk.registerAttendee({
+  fullName: 'Juan Pérez', // REQUERIDO
+  email: 'juan@example.com', // REQUERIDO
+  country: 'Colombia', // opcional
+  city: 'Bogotá', // opcional
+  properties: {
+    // opcional
+    company: 'Mi Empresa',
+    role: 'Developer',
+  },
+});
 
-  console.log('✅ Asistente registrado:', response.attendee.code);
-  // El código generado es: 123456 (se usa para buscar al asistente)
-} catch (error) {
-  console.error('❌ Error:', error.message);
-  // Si no hay conexion con el servidor local, esto FALLA - no se puede encolar
-}
+console.log('Asistente registrado:', response.attendee.code);
+// Retorna: { message: 'Attendee registered successfully', attendee: {...} }
 ```
 
-### 🔍 **2. BUSCAR ASISTENTE POR CÓDIGO** (CRÍTICO - Consulta local)
+**Campos requeridos:** `fullName`, `email`  
+**Campos opcionales:** `country`, `city`, `properties`
+
+### **2. Buscar Asistente por Código**
+
+Busca un asistente existente usando su código único.
 
 ```javascript
-try {
-  const response = await sdk.findAttendeeByCode('123456');
-  console.log('✅ Asistente encontrado:', response.attendee);
-} catch (error) {
-  console.error('❌ Asistente no encontrado');
-}
+const response = await sdk.findAttendeeByCode('ABC123');
+
+console.log('Asistente encontrado:', response.attendee);
+// Retorna: { message: 'Attendee found', attendee: {...} }
 ```
 
-### 🎯 **3. REGISTRAR JUGADA EN EXPERIENCIA** (SE ENCOLA automáticamente)
+**Parámetro:** `code` (string) - Código del asistente
+
+### **3. Registrar Jugada en Experiencia**
+
+Registra una jugada/puntuación de un asistente en una experiencia específica.
 
 ```javascript
-// Esto SIEMPRE funciona - se encola si no conexion con el servidor local
-sdk.logExperiencePlay({
-  eventExperienceId: 'experience-uuid-456',
-  attendeeId: 'attendee-uuid-789',
-  play_timestamp: new Date().toISOString(), // "2025-10-17T04:35:57.000Z"
+const response = await sdk.logExperiencePlay({
+  attendeeId: 'attendee-uuid-789', // REQUERIDO
+  play_timestamp: new Date().toISOString(), // REQUERIDO
+  score: 1500, // REQUERIDO
+  bonusScore: 300, // opcional
+  modePoints: 'firstTry', // opcional: "firstTry" | "betterTry"
   data: {
+    // opcional
     level: 3,
     timeSpent: 120,
     achievements: ['first_try', 'perfect_score'],
   },
-  score: 1500,
-  bonusScore: 300,
-  modePoints: 'firstTry', // "firstTry" | "betterTry"
 });
 
-console.log('📝 Jugada registrada - se sincronizará automáticamente');
+console.log('Jugada registrada:', response.message);
+// Retorna: { message: 'Experience play logged successfully', play: {...} }
 ```
 
-### 🏆 **4. REDIMIR PUNTOS** (SE ENCOLA automáticamente)
+**Campos requeridos:** `attendeeId`, `play_timestamp`, `score`  
+**Campos opcionales:** `bonusScore`, `modePoints`, `data`
+
+### **4. Redimir Puntos**
+
+Permite a un asistente redimir puntos por premios.
 
 ```javascript
-// Esto SIEMPRE funciona - se encola si no conexion con el servidor local
-sdk.redeemPoints({
-  eventId: 'event-uuid-123',
-  attendeeId: 'attendee-uuid-789',
-  pointsRedeemed: 500,
-  reason: 'Canje de premio - Camiseta oficial',
+const response = await sdk.redeemPoints({
+  attendeeId: 'attendee-uuid-789', // REQUERIDO
+  pointsRedeemed: 500, // REQUERIDO
+  reason: 'Canje de premio - Camiseta oficial', // REQUERIDO
 });
 
-console.log('📝 Redención procesada - se sincronizará automáticamente');
+console.log('Redención procesada:', response.message);
+// Retorna: { message: 'Points redeemed successfully', redemption: {...} }
 ```
 
-## 🔧 Utilidades del SDK
+**Campos requeridos:** `attendeeId`, `pointsRedeemed`, `reason`
+
+## 🔧 Manejo de Errores
+
+Todos los métodos pueden lanzar errores si:
+
+- No hay conexión a internet
+- El servidor no responde
+- Los datos enviados son inválidos
+- El asistente no existe
 
 ```javascript
-// Verificar estado de conexión
-console.log('¿Hay internet?', sdk.getConnectionStatus());
-
-// Ver cuántos elementos hay en cola
-console.log('Elementos en cola:', sdk.getQueueSize());
-
-// Ver estadísticas detalladas de la cola
-console.log('Estadísticas:', sdk.getQueueStats());
-// {
-//   total: 5,
-//   pending: 3,
-//   retrying: 1,
-//   failed: 1
-// }
-
-// Forzar sincronización manual
-await sdk.forceSync();
-
-// Limpiar cola (¡CUIDADO!)
-sdk.clearQueue();
+try {
+  const response = await sdk.registerAttendee({
+    fullName: 'Juan Pérez',
+    email: 'juan@example.com',
+  });
+  console.log('Éxito:', response.message);
+} catch (error) {
+  console.error('Error:', error.message);
+  // Manejar el error según sea necesario
+}
 ```
 
 ## 🎮 Ejemplo Completo para un Juego
@@ -120,6 +129,8 @@ class GameManager {
   constructor() {
     this.sdk = new EdgeDataHubSDK({
       baseUrl: 'http://localhost:3000/edge',
+      eventId: 'event-uuid-123', // REQUERIDO: ID del evento
+      eventExperienceId: 'experience-uuid-456', // REQUERIDO: ID de la experiencia
     });
     this.currentAttendee = null;
   }
@@ -128,12 +139,12 @@ class GameManager {
   async registerPlayer(playerData) {
     try {
       const response = await this.sdk.registerAttendee({
-        eventId: 'event-123',
-        fullName: playerData.name,
-        email: playerData.email,
-        country: playerData.country || 'Colombia',
-        city: playerData.city || 'Bogotá',
+        fullName: playerData.name, // REQUERIDO
+        email: playerData.email, // REQUERIDO
+        country: playerData.country || 'Colombia', // opcional
+        city: playerData.city || 'Bogotá', // opcional
       });
+      // eventId se agrega automáticamente
 
       this.currentAttendee = response.attendee;
       console.log(`🎉 Jugador registrado: ${this.currentAttendee.code}`);
@@ -165,18 +176,19 @@ class GameManager {
     }
 
     this.sdk.logExperiencePlay({
-      eventExperienceId: 'game-experience-123', // ID de tu experiencia
-      attendeeId: this.currentAttendee.id,
-      play_timestamp: new Date().toISOString(),
+      attendeeId: this.currentAttendee.id, // REQUERIDO
+      play_timestamp: new Date().toISOString(), // REQUERIDO
+      score: score, // REQUERIDO
+      bonusScore: bonusScore, // opcional
+      modePoints: this.isFirstTry ? 'firstTry' : 'betterTry', // opcional
       data: {
+        // opcional
         gameLevel: this.currentLevel,
         timeSpent: this.timeSpent,
         moves: this.movesCount,
       },
-      score: score,
-      bonusScore: bonusScore,
-      modePoints: this.isFirstTry ? 'firstTry' : 'betterTry',
     });
+    // eventExperienceId se agrega automáticamente
 
     console.log(
       `📝 Puntuación ${score} registrada para ${this.currentAttendee.fullName}`,
@@ -191,11 +203,11 @@ class GameManager {
     }
 
     this.sdk.redeemPoints({
-      eventId: 'event-123',
-      attendeeId: this.currentAttendee.id,
-      pointsRedeemed: points,
-      reason: reason,
+      attendeeId: this.currentAttendee.id, // REQUERIDO
+      pointsRedeemed: points, // REQUERIDO
+      reason: reason, // REQUERIDO
     });
+    // eventId se agrega automáticamente
 
     console.log(`🏆 Redención de ${points} puntos procesada`);
   }
@@ -211,7 +223,7 @@ await game.registerPlayer({
 });
 
 // O buscar jugador existente
-await game.findPlayerByCode('123456');
+await game.findPlayerByCode('ABC123');
 
 // Registrar puntuación
 game.submitScore(1500, 300);

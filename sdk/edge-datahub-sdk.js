@@ -6,146 +6,42 @@
 class EdgeDataHubSDK {
   constructor(config) {
     this.baseUrl = config.baseUrl || 'http://localhost:3000/edge';
-    this.isOnline = true;
-    this.queueKey = 'edge_datahub_queue';
-    this.maxRetries = 3;
-    this.retryDelay = 5000; // 5 segundos
 
-    // Health check cada 10 segundos
-    this.startHealthCheck();
+    // Event configuration - REQUIRED for each implementation
+    this.eventId = config.eventId; // REQUIRED: ID del evento
+    this.eventExperienceId = config.eventExperienceId; // REQUIRED: ID de la experiencia
 
-    // Procesar cola cada 30 segundos
-    this.startQueueProcessor();
-  }
-
-  // ===== HEALTH CHECK =====
-  startHealthCheck() {
-    setInterval(async () => {
-      try {
-        const response = await fetch(`${this.baseUrl}/health`, {
-          method: 'GET',
-          timeout: 3000,
-        });
-        this.isOnline = response.ok;
-      } catch (error) {
-        this.isOnline = false;
-      }
-    }, 10000);
-  }
-
-  // ===== QUEUE MANAGEMENT =====
-  enqueue(operation, data, endpoint) {
-    const queueItem = {
-      id: Date.now() + Math.random(),
-      operation,
-      data,
-      endpoint,
-      timestamp: new Date().toISOString(),
-      retries: 0,
-    };
-
-    const queue = this.getQueue();
-    queue.push(queueItem);
-    this.saveQueue(queue);
-
-    console.log(
-      `📝 [QUEUE] Encolado: ${operation} - Total en cola: ${queue.length}`,
-    );
-  }
-
-  getQueue() {
-    try {
-      return JSON.parse(localStorage.getItem(this.queueKey) || '[]');
-    } catch {
-      return [];
+    if (!this.eventId) {
+      throw new Error('❌ eventId is required in SDK configuration');
+    }
+    if (!this.eventExperienceId) {
+      throw new Error('❌ eventExperienceId is required in SDK configuration');
     }
   }
 
-  saveQueue(queue) {
-    localStorage.setItem(this.queueKey, JSON.stringify(queue));
-  }
-
-  startQueueProcessor() {
-    setInterval(() => {
-      this.processQueue();
-    }, 30000);
-  }
-
-  async processQueue() {
-    if (!this.isOnline) return;
-
-    const queue = this.getQueue();
-    if (queue.length === 0) return;
-
-    console.log(`🔄 [QUEUE] Procesando ${queue.length} elementos...`);
-
-    const itemsToProcess = queue.filter(
-      (item) => item.retries < this.maxRetries,
-    );
-
-    for (const item of itemsToProcess) {
-      try {
-        await this.executeOperation(item);
-        this.removeFromQueue(item.id);
-        console.log(`✅ [QUEUE] Procesado: ${item.operation}`);
-      } catch (error) {
-        this.incrementRetries(item.id);
-        console.log(`❌ [QUEUE] Error en ${item.operation}: ${error.message}`);
-      }
-    }
-  }
-
-  async executeOperation(item) {
-    const response = await fetch(`${this.baseUrl}${item.endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(item.data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return await response.json();
-  }
-
-  removeFromQueue(itemId) {
-    const queue = this.getQueue();
-    const filtered = queue.filter((item) => item.id !== itemId);
-    this.saveQueue(filtered);
-  }
-
-  incrementRetries(itemId) {
-    const queue = this.getQueue();
-    const item = queue.find((item) => item.id === itemId);
-    if (item) {
-      item.retries++;
-      this.saveQueue(queue);
-    }
-  }
-
-  // ===== OPERACIONES CRÍTICAS (NO ENCOLABLES) =====
+  // ===== OPERACIONES PRINCIPALES =====
 
   /**
-   * Registra un asistente - CRÍTICO: No se puede encolar
-   * @param {AttendeeRegisterRequest} data
+   * Registra un asistente
+   * @param {AttendeeRegisterRequest} data - Datos del asistente (sin eventId, se agrega automáticamente)
    * @returns {Promise<AttendeeResponse>}
    */
   async registerAttendee(data) {
-    if (!this.isOnline) {
-      throw new Error(
-        '❌ No se puede registrar asistente sin conexión a internet',
-      );
-    }
+    // Validar campos requeridos
+    this.validateRequiredFields(data, ['fullName', 'email']);
+
+    // Agregar eventId automáticamente
+    const payload = {
+      ...data,
+      eventId: this.eventId,
+    };
 
     const response = await fetch(`${this.baseUrl}/attendees/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -156,7 +52,7 @@ class EdgeDataHubSDK {
   }
 
   /**
-   * Busca asistente por código - CRÍTICO: Consulta local
+   * Busca asistente por código
    * @param {string} code
    * @returns {Promise<AttendeeResponse>}
    */
@@ -175,148 +71,126 @@ class EdgeDataHubSDK {
     return await response.json();
   }
 
-  // ===== OPERACIONES ENCOLABLES =====
-
   /**
-   * Registra jugada en experiencia - SE ENCOLA si no hay conexión
-   * @param {ExperiencePlayRequest} data
+   * Registra jugada en experiencia
+   * @param {ExperiencePlayRequest} data - Datos de la jugada (sin eventExperienceId, se agrega automáticamente)
+   * @returns {Promise<any>}
    */
-  logExperiencePlay(data) {
-    if (this.isOnline) {
-      // Intentar enviar directamente
-      fetch(`${this.baseUrl}/experience`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-          console.log('✅ [DIRECT] Jugada enviada directamente');
-        })
-        .catch((error) => {
-          console.log('📝 [FALLBACK] Encolando jugada...');
-          this.enqueue('logExperiencePlay', data, '/experience');
-        });
-    } else {
-      console.log('📝 [OFFLINE] Encolando jugada...');
-      this.enqueue('logExperiencePlay', data, '/experience');
+  async logExperiencePlay(data) {
+    // Validar campos requeridos
+    this.validateRequiredFields(data, [
+      'attendeeId',
+      'play_timestamp',
+      'score',
+    ]);
+
+    // Agregar eventExperienceId automáticamente
+    const payload = {
+      ...data,
+      eventExperienceId: this.eventExperienceId,
+    };
+
+    const response = await fetch(`${this.baseUrl}/experience`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error registrando jugada: ${response.statusText}`);
     }
+
+    return await response.json();
   }
 
   /**
-   * Redime puntos - SE ENCOLA si no hay conexión
-   * @param {RedemptionRequest} data
+   * Redime puntos
+   * @param {RedemptionRequest} data - Datos de redención (sin eventId, se agrega automáticamente)
+   * @returns {Promise<any>}
    */
-  redeemPoints(data) {
-    if (this.isOnline) {
-      // Intentar enviar directamente
-      fetch(`${this.baseUrl}/redemption`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-          console.log('✅ [DIRECT] Redención enviada directamente');
-        })
-        .catch((error) => {
-          console.log('📝 [FALLBACK] Encolando redención...');
-          this.enqueue('redeemPoints', data, '/redemption');
-        });
-    } else {
-      console.log('📝 [OFFLINE] Encolando redención...');
-      this.enqueue('redeemPoints', data, '/redemption');
+  async redeemPoints(data) {
+    // Validar campos requeridos
+    this.validateRequiredFields(data, [
+      'attendeeId',
+      'pointsRedeemed',
+      'reason',
+    ]);
+
+    // Agregar eventId automáticamente
+    const payload = {
+      ...data,
+      eventId: this.eventId,
+    };
+
+    const response = await fetch(`${this.baseUrl}/redemption`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error redimiendo puntos: ${response.statusText}`);
     }
+
+    return await response.json();
   }
 
   // ===== UTILIDADES =====
 
   /**
-   * Obtiene estado de conexión
-   * @returns {boolean}
+   * Valida que los campos requeridos estén presentes
+   * @param {Object} data - Datos a validar
+   * @param {string[]} requiredFields - Campos requeridos
    */
-  getConnectionStatus() {
-    return this.isOnline;
-  }
-
-  /**
-   * Obtiene tamaño de la cola
-   * @returns {number}
-   */
-  getQueueSize() {
-    return this.getQueue().length;
-  }
-
-  /**
-   * Fuerza procesamiento de la cola
-   */
-  async forceSync() {
-    console.log('🔄 [FORCE] Forzando sincronización...');
-    await this.processQueue();
-  }
-
-  /**
-   * Limpia la cola (usar con cuidado)
-   */
-  clearQueue() {
-    localStorage.removeItem(this.queueKey);
-    console.log('🗑️ [CLEAR] Cola limpiada');
-  }
-
-  /**
-   * Obtiene estadísticas de la cola
-   * @returns {object}
-   */
-  getQueueStats() {
-    const queue = this.getQueue();
-    return {
-      total: queue.length,
-      pending: queue.filter((item) => item.retries === 0).length,
-      retrying: queue.filter(
-        (item) => item.retries > 0 && item.retries < this.maxRetries,
-      ).length,
-      failed: queue.filter((item) => item.retries >= this.maxRetries).length,
-    };
+  validateRequiredFields(data, requiredFields) {
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        throw new Error(`❌ Campo requerido faltante: ${field}`);
+      }
+    }
   }
 }
 
 // ===== TIPOS TYPESCRIPT (JSDoc para autocompletado) =====
 
 /**
+ * @typedef {Object} SDKConfig
+ * @property {string} baseUrl - URL base del servidor Edge DataHub
+ * @property {string} eventId - ID del evento (REQUERIDO)
+ * @property {string} eventExperienceId - ID de la experiencia (REQUERIDO)
+ */
+
+/**
  * @typedef {Object} AttendeeRegisterRequest
- * @property {string} eventId - ID del evento
- * @property {string} fullName - Nombre completo del asistente
- * @property {string} email - Email del asistente
+ * @property {string} fullName - Nombre completo del asistente (REQUERIDO)
+ * @property {string} email - Email del asistente (REQUERIDO)
  * @property {string} [country] - País (opcional)
  * @property {string} [city] - Ciudad (opcional)
  * @property {Object} [properties] - Propiedades adicionales (opcional)
+ * @description eventId se agrega automáticamente desde la configuración del SDK
  */
 
 /**
  * @typedef {Object} ExperiencePlayRequest
- * @property {string} eventExperienceId - ID de la experiencia
- * @property {string} attendeeId - ID del asistente
- * @property {string} play_timestamp - Timestamp de la jugada (ISO string)
- * @property {Object} [data] - Datos adicionales de la jugada
- * @property {number} score - Puntuación obtenida
+ * @property {string} attendeeId - ID del asistente (REQUERIDO)
+ * @property {string} play_timestamp - Timestamp de la jugada en formato ISO (REQUERIDO)
+ * @property {number} score - Puntuación obtenida (REQUERIDO)
  * @property {number} [bonusScore] - Puntuación bonus (opcional)
- * @property {string} [modePoints] - Modo de puntos: 'firstTry' | 'betterTry'
+ * @property {string} [modePoints] - Modo de puntos: 'firstTry' | 'betterTry' (opcional)
+ * @property {Object} [data] - Datos adicionales de la jugada (opcional)
+ * @description eventExperienceId se agrega automáticamente desde la configuración del SDK
  */
 
 /**
  * @typedef {Object} RedemptionRequest
- * @property {string} eventId - ID del evento
- * @property {string} attendeeId - ID del asistente
- * @property {number} pointsRedeemed - Puntos a redimir
- * @property {string} reason - Motivo de la redención
+ * @property {string} attendeeId - ID del asistente (REQUERIDO)
+ * @property {number} pointsRedeemed - Puntos a redimir (REQUERIDO)
+ * @property {string} reason - Motivo de la redención (REQUERIDO)
+ * @description eventId se agrega automáticamente desde la configuración del SDK
  */
 
 /**
@@ -327,6 +201,9 @@ class EdgeDataHubSDK {
  * @property {string} attendee.code - Código único del asistente
  * @property {string} attendee.fullName - Nombre completo
  * @property {string} attendee.email - Email
+ * @property {string} [attendee.country] - País
+ * @property {string} [attendee.city] - Ciudad
+ * @property {Object} [attendee.properties] - Propiedades adicionales
  */
 
 // Exportar para uso
