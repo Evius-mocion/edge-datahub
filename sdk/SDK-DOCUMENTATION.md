@@ -10,11 +10,9 @@
 ```
 
 ```javascript
-// Configurar SDK - REQUERIDO: eventId y eventExperienceId
+// Configurar SDK - IDs quemados en el código
 const sdk = new EdgeDataHubSDK({
   baseUrl: 'http://localhost:3000/edge', // URL de tu servidor Edge DataHub
-  eventId: 'event-uuid-123', // REQUERIDO: ID del evento
-  eventExperienceId: 'experience-uuid-456', // REQUERIDO: ID de la experiencia
 });
 ```
 
@@ -129,8 +127,6 @@ class GameManager {
   constructor() {
     this.sdk = new EdgeDataHubSDK({
       baseUrl: 'http://localhost:3000/edge',
-      eventId: 'event-uuid-123', // REQUERIDO: ID del evento
-      eventExperienceId: 'experience-uuid-456', // REQUERIDO: ID de la experiencia
     });
     this.currentAttendee = null;
   }
@@ -232,54 +228,13 @@ game.submitScore(1500, 300);
 game.redeemPrize(500, 'Canje de camiseta');
 ```
 
-## 🔄 Cómo Funciona la Cola Offline
-
-1. **Con Internet**: Los datos se envían directamente al servidor
-2. **Sin Internet**: Los datos se guardan en localStorage
-3. **Recuperación**: Cada 30 segundos intenta enviar los datos pendientes
-4. **Reintentos**: Hasta 3 intentos por elemento
-5. **Logs**: Todo se registra en la consola para debugging
-
-## 🚨 Reglas Importantes
-
-### ✅ **SÍ se puede hacer sin internet:**
-
-- Registrar jugadas (`logExperiencePlay`)
-- Redimir puntos (`redeemPoints`)
-- Buscar asistente por código (`findAttendeeByCode`)
-
-### ❌ **NO se puede hacer sin internet:**
-
-- Registrar nuevo asistente (`registerAttendee`)
-
-## 🐛 Debugging
-
-```javascript
-// Ver todos los logs en la consola del navegador
-// Los logs aparecen con emojis para fácil identificación:
-// 📝 = Encolado
-// ✅ = Exitoso
-// ❌ = Error
-// 🔄 = Procesando
-// 🗑️ = Limpiado
-
-// Ver estado actual
-console.log('Estado:', {
-  online: sdk.getConnectionStatus(),
-  queueSize: sdk.getQueueSize(),
-  queueStats: sdk.getQueueStats(),
-});
-```
 
 ## 🎯 Para Mañana - Checklist
 
 - [ ] Incluir `edge-datahub-sdk.js` en tu proyecto
 - [ ] Configurar `baseUrl` con la IP de tu servidor
-- [ ] Implementar registro de asistente (con validación de internet)
-- [ ] Implementar búsqueda por código
-- [ ] Implementar registro de jugadas
-- [ ] Implementar redención de puntos
-- [ ] Probar con y sin internet
-- [ ] Verificar logs en consola
+- [ ] Implementar manejo de errores con try/catch
+- [ ] Probar todos los servicios
+- [ ] Verificar respuestas del servidor
 
 ¡Listo para el evento! 🚀

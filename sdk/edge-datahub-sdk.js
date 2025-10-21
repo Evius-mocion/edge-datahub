@@ -1,29 +1,22 @@
 /**
- * Edge DataHub SDK - Simple Offline Queue System
+ * Edge DataHub SDK - Simple SDK for Event Gamification
  * Para eventos con conectividad intermitente
  */
 
 class EdgeDataHubSDK {
   constructor(config) {
     this.baseUrl = config.baseUrl || 'http://localhost:3000/edge';
-
-    // Event configuration - REQUIRED for each implementation
-    this.eventId = config.eventId; // REQUIRED: ID del evento
-    this.eventExperienceId = config.eventExperienceId; // REQUIRED: ID de la experiencia
-
-    if (!this.eventId) {
-      throw new Error('❌ eventId is required in SDK configuration');
-    }
-    if (!this.eventExperienceId) {
-      throw new Error('❌ eventExperienceId is required in SDK configuration');
-    }
+    
+    // Event configuration - HARDCODED IDs for this implementation
+    this.eventId = 'event-uuid-123'; // HARDCODED: ID del evento
+    this.eventExperienceId = 'experience-uuid-456'; // HARDCODED: ID de la experiencia
   }
 
   // ===== OPERACIONES PRINCIPALES =====
 
   /**
    * Registra un asistente
-   * @param {AttendeeRegisterRequest} data - Datos del asistente (sin eventId, se agrega automáticamente)
+   * @param {AttendeeRegisterRequest} data - Datos del asistente (eventId se agrega automáticamente)
    * @returns {Promise<AttendeeResponse>}
    */
   async registerAttendee(data) {
@@ -73,7 +66,7 @@ class EdgeDataHubSDK {
 
   /**
    * Registra jugada en experiencia
-   * @param {ExperiencePlayRequest} data - Datos de la jugada (sin eventExperienceId, se agrega automáticamente)
+   * @param {ExperiencePlayRequest} data - Datos de la jugada (eventExperienceId se agrega automáticamente)
    * @returns {Promise<any>}
    */
   async logExperiencePlay(data) {
@@ -107,7 +100,7 @@ class EdgeDataHubSDK {
 
   /**
    * Redime puntos
-   * @param {RedemptionRequest} data - Datos de redención (sin eventId, se agrega automáticamente)
+   * @param {RedemptionRequest} data - Datos de redención (eventId se agrega automáticamente)
    * @returns {Promise<any>}
    */
   async redeemPoints(data) {
@@ -160,8 +153,6 @@ class EdgeDataHubSDK {
 /**
  * @typedef {Object} SDKConfig
  * @property {string} baseUrl - URL base del servidor Edge DataHub
- * @property {string} eventId - ID del evento (REQUERIDO)
- * @property {string} eventExperienceId - ID de la experiencia (REQUERIDO)
  */
 
 /**
@@ -171,7 +162,7 @@ class EdgeDataHubSDK {
  * @property {string} [country] - País (opcional)
  * @property {string} [city] - Ciudad (opcional)
  * @property {Object} [properties] - Propiedades adicionales (opcional)
- * @description eventId se agrega automáticamente desde la configuración del SDK
+ * @description eventId se agrega automáticamente (está quemado en el código)
  */
 
 /**
@@ -182,7 +173,7 @@ class EdgeDataHubSDK {
  * @property {number} [bonusScore] - Puntuación bonus (opcional)
  * @property {string} [modePoints] - Modo de puntos: 'firstTry' | 'betterTry' (opcional)
  * @property {Object} [data] - Datos adicionales de la jugada (opcional)
- * @description eventExperienceId se agrega automáticamente desde la configuración del SDK
+ * @description eventExperienceId se agrega automáticamente (está quemado en el código)
  */
 
 /**
@@ -190,7 +181,7 @@ class EdgeDataHubSDK {
  * @property {string} attendeeId - ID del asistente (REQUERIDO)
  * @property {number} pointsRedeemed - Puntos a redimir (REQUERIDO)
  * @property {string} reason - Motivo de la redención (REQUERIDO)
- * @description eventId se agrega automáticamente desde la configuración del SDK
+ * @description eventId se agrega automáticamente (está quemado en el código)
  */
 
 /**
