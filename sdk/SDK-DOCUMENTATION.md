@@ -35,10 +35,10 @@ try {
   });
 
   console.log('✅ Asistente registrado:', response.attendee.code);
-  // El código generado es: ABC123 (se usa para buscar al asistente)
+  // El código generado es: 123456 (se usa para buscar al asistente)
 } catch (error) {
   console.error('❌ Error:', error.message);
-  // Si no hay internet, esto FALLA - no se puede encolar
+  // Si no hay conexion con el servidor local, esto FALLA - no se puede encolar
 }
 ```
 
@@ -46,7 +46,7 @@ try {
 
 ```javascript
 try {
-  const response = await sdk.findAttendeeByCode('ABC123');
+  const response = await sdk.findAttendeeByCode('123456');
   console.log('✅ Asistente encontrado:', response.attendee);
 } catch (error) {
   console.error('❌ Asistente no encontrado');
@@ -56,7 +56,7 @@ try {
 ### 🎯 **3. REGISTRAR JUGADA EN EXPERIENCIA** (SE ENCOLA automáticamente)
 
 ```javascript
-// Esto SIEMPRE funciona - se encola si no hay internet
+// Esto SIEMPRE funciona - se encola si no conexion con el servidor local
 sdk.logExperiencePlay({
   eventExperienceId: 'experience-uuid-456',
   attendeeId: 'attendee-uuid-789',
@@ -77,7 +77,7 @@ console.log('📝 Jugada registrada - se sincronizará automáticamente');
 ### 🏆 **4. REDIMIR PUNTOS** (SE ENCOLA automáticamente)
 
 ```javascript
-// Esto SIEMPRE funciona - se encola si no hay internet
+// Esto SIEMPRE funciona - se encola si no conexion con el servidor local
 sdk.redeemPoints({
   eventId: 'event-uuid-123',
   attendeeId: 'attendee-uuid-789',
@@ -211,7 +211,7 @@ await game.registerPlayer({
 });
 
 // O buscar jugador existente
-await game.findPlayerByCode('ABC123');
+await game.findPlayerByCode('123456');
 
 // Registrar puntuación
 game.submitScore(1500, 300);
