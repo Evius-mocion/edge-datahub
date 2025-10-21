@@ -104,7 +104,7 @@ export class EdgeService {
       score : MoreThan(0)
     },
   });
-  
+
   if (existingPlay) {
        // Crear nuevo registro si no existe
       const newPlaywithoutScore = this.experiencePlayData.create({
@@ -177,7 +177,7 @@ export class EdgeService {
   }
 
 
-   const totalPoints = await this.get_total_points_user(attendee.id, attendee.eventId)
+   const [totalPoints,_redemptionPoints] = await this.get_total_points_user(attendee.id, attendee.eventId)
 
   if (pointsRedeemed > totalPoints) {
      throw new BadRequestException(`Cannot redeem ${pointsRedeemed} points — you only have ${totalPoints} points`)
@@ -220,7 +220,7 @@ const whereClause =
   }
 
 
-  const  totalPoints = await this.get_total_points_user(attendee.id, attendee.eventId)
+  const  [totalPoints,redemptionPoints] = await this.get_total_points_user(attendee.id, attendee.eventId)
 
   const status = {
     id: attendee.id,
@@ -229,6 +229,7 @@ const whereClause =
     email: attendee.email,
     checkInAt: attendee.checkInAt,
     totalPoints: Number(totalPoints) || 0,
+    redemptionPoints: redemptionPoints,
   };
 
   return { message: 'Attendee status retrieved successfully', status };
@@ -243,7 +244,19 @@ const whereClause =
       .where('play.attendeeId = :attendeeId', { attendeeId: attendee_id })
       .andWhere('play.eventId = :eventId', { eventId: event_id})
       .getRawOne()) || { totalPoints: 0 };
-    return totalPoints
+  
+     // Total de puntos redimidos
+    const { totalRedeemed } =
+    (await this.pointsRedemptionRepo
+      .createQueryBuilder('redemption')
+      .select('SUM(COALESCE(redemption.pointsRedeemed, 0))', 'totalRedeemed')
+      .where('redemption.attendeeId = :attendeeId', { attendeeId: attendee_id })
+      .andWhere('redemption.eventId = :eventId', { eventId: event_id })
+      .getRawOne()) || { totalRedeemed: 0 };
+
+        return [totalPoints,totalRedeemed]
+
+
   }
 
 }
