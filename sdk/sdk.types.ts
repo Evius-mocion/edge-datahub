@@ -48,7 +48,8 @@ export interface AttendeeStatusResponse {
     email: string;
     checkInAt?: string;
     totalPoints: number;
-    redemptionPoints: number;
+    redemptionPoints: number
+    availablePoints: number
   };
 }
 
