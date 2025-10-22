@@ -6,7 +6,7 @@
 class EdgeDataHubSDK {
   constructor(config) {
     this.baseUrl = config.baseUrl || 'http://localhost:3000/edge';
-    
+
     // Event configuration - HARDCODED IDs for this implementation
     this.eventId = 'event-uuid-123'; // HARDCODED: ID del evento
     this.eventExperienceId = 'experience-uuid-456'; // HARDCODED: ID de la experiencia
@@ -196,10 +196,3 @@ class EdgeDataHubSDK {
  * @property {string} [attendee.city] - Ciudad
  * @property {Object} [attendee.properties] - Propiedades adicionales
  */
-
-// Exportar para uso
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = EdgeDataHubSDK;
-} else {
-  window.EdgeDataHubSDK = EdgeDataHubSDK;
-}
