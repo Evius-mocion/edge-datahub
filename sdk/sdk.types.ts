@@ -3,10 +3,6 @@
  * TypeScript definitions for the Edge DataHub SDK
  */
 
-export interface SDKConfig {
-  baseUrl: string;
-}
-
 export interface AttendeeRegisterRequest {
   fullName: string;
   email: string;
@@ -40,6 +36,19 @@ export interface AttendeeResponse {
     country?: string;
     city?: string;
     properties?: Record<string, any>;
+  };
+}
+
+export interface AttendeeStatusResponse {
+  message: string;
+  status: {
+    id: string;
+    eventId: string;
+    fullName: string;
+    email: string;
+    checkInAt?: string;
+    totalPoints: number;
+    redemptionPoints: number;
   };
 }
 

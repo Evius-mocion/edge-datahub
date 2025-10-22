@@ -5,14 +5,14 @@
  */
 
 import {
-  SDKConfig,
-  AttendeeRegisterRequest,
-  AttendeeResponse,
-  ExperiencePlayRequest,
-  ExperiencePlayResponse,
-  RedemptionRequest,
-  RedemptionResponse,
-  ErrorResponse
+  type AttendeeRegisterRequest,
+  type AttendeeResponse,
+  type AttendeeStatusResponse,
+  type ExperiencePlayRequest,
+  type ExperiencePlayResponse,
+  type RedemptionRequest,
+  type RedemptionResponse,
+  type ErrorResponse,
 } from './sdk.types';
 
 export class EdgeDataHubSDK {
@@ -20,9 +20,9 @@ export class EdgeDataHubSDK {
   private eventId: string;
   private eventExperienceId: string;
 
-  constructor(config: SDKConfig) {
-    this.baseUrl = config.baseUrl || 'http://localhost:3000/edge';
-    
+  constructor() {
+    this.baseUrl = 'http://localhost:3000/edge';
+
     // Event configuration - HARDCODED IDs for this implementation
     this.eventId = 'event-uuid-123'; // HARDCODED: ID del evento
     this.eventExperienceId = 'experience-uuid-456'; // HARDCODED: ID de la experiencia
@@ -35,7 +35,9 @@ export class EdgeDataHubSDK {
    * @param data - Datos del asistente (eventId se agrega automáticamente)
    * @returns Promise con la respuesta del servidor
    */
-  async registerAttendee(data: AttendeeRegisterRequest): Promise<AttendeeResponse> {
+  async registerAttendee(
+    data: AttendeeRegisterRequest,
+  ): Promise<AttendeeResponse> {
     // Validar campos requeridos
     this.validateRequiredFields(data, ['fullName', 'email']);
 
@@ -55,7 +57,9 @@ export class EdgeDataHubSDK {
 
     if (!response.ok) {
       const errorData: ErrorResponse = await response.json();
-      throw new Error(`Error registrando asistente: ${errorData.message || response.statusText}`);
+      throw new Error(
+        `Error registrando asistente: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -76,7 +80,37 @@ export class EdgeDataHubSDK {
 
     if (!response.ok) {
       const errorData: ErrorResponse = await response.json();
-      throw new Error(`Error buscando asistente: ${errorData.message || response.statusText}`);
+      throw new Error(
+        `Error buscando asistente: ${errorData.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Obtiene el status completo de un asistente (puntos, redemptions, actividad)
+   * @param data - Datos para buscar el asistente (attendeeId, code, o email)
+   * @returns Promise con el status completo del asistente
+   */
+  async getAttendeeStatus(data: {
+    attendeeId?: string;
+    code?: string;
+    email?: string;
+  }): Promise<AttendeeStatusResponse> {
+    const response = await fetch(`${this.baseUrl}/attendees_status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData: ErrorResponse = await response.json();
+      throw new Error(
+        `Error obteniendo status del asistente: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -87,7 +121,9 @@ export class EdgeDataHubSDK {
    * @param data - Datos de la jugada (eventExperienceId se agrega automáticamente)
    * @returns Promise con la respuesta del servidor
    */
-  async logExperiencePlay(data: ExperiencePlayRequest): Promise<ExperiencePlayResponse> {
+  async logExperiencePlay(
+    data: ExperiencePlayRequest,
+  ): Promise<ExperiencePlayResponse> {
     // Validar campos requeridos
     this.validateRequiredFields(data, [
       'attendeeId',
@@ -111,7 +147,9 @@ export class EdgeDataHubSDK {
 
     if (!response.ok) {
       const errorData: ErrorResponse = await response.json();
-      throw new Error(`Error registrando jugada: ${errorData.message || response.statusText}`);
+      throw new Error(
+        `Error registrando jugada: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -146,7 +184,9 @@ export class EdgeDataHubSDK {
 
     if (!response.ok) {
       const errorData: ErrorResponse = await response.json();
-      throw new Error(`Error redimiendo puntos: ${errorData.message || response.statusText}`);
+      throw new Error(
+        `Error redimiendo puntos: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -159,7 +199,10 @@ export class EdgeDataHubSDK {
    * @param data - Datos a validar
    * @param requiredFields - Campos requeridos
    */
-  private validateRequiredFields(data: Record<string, any>, requiredFields: string[]): void {
+  private validateRequiredFields(
+    data: Record<string, any>,
+    requiredFields: string[],
+  ): void {
     for (const field of requiredFields) {
       if (!data[field]) {
         throw new Error(`❌ Campo requerido faltante: ${field}`);
@@ -192,6 +235,4 @@ export class EdgeDataHubSDK {
   }
 }
 
-// Exportar tipos para uso externo
-export * from './sdk.types';
-
+export const sdk = new EdgeDataHubSDK();

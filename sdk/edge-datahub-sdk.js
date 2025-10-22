@@ -38,7 +38,10 @@ class EdgeDataHubSDK {
     });
 
     if (!response.ok) {
-      throw new Error(`Error registrando asistente: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(
+        `Error registrando asistente: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -58,7 +61,37 @@ class EdgeDataHubSDK {
     });
 
     if (!response.ok) {
-      throw new Error(`Error buscando asistente: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(
+        `Error buscando asistente: ${errorData.message || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Obtiene el status completo de un asistente (puntos, redemptions, actividad)
+   * @param {Object} data - Datos para buscar el asistente (attendeeId, code, o email)
+   * @param {string} [data.attendeeId] - ID del asistente
+   * @param {string} [data.code] - Código del asistente
+   * @param {string} [data.email] - Email del asistente
+   * @returns {Promise<AttendeeStatusResponse>}
+   */
+  async getAttendeeStatus(data) {
+    const response = await fetch(`${this.baseUrl}/attendees_status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        `Error obteniendo status del asistente: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -92,7 +125,10 @@ class EdgeDataHubSDK {
     });
 
     if (!response.ok) {
-      throw new Error(`Error registrando jugada: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(
+        `Error registrando jugada: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -126,7 +162,10 @@ class EdgeDataHubSDK {
     });
 
     if (!response.ok) {
-      throw new Error(`Error redimiendo puntos: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(
+        `Error redimiendo puntos: ${errorData.message || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -146,13 +185,49 @@ class EdgeDataHubSDK {
       }
     }
   }
+
+  /**
+   * Obtiene la URL base configurada
+   * @returns {string} URL base del SDK
+   */
+  getBaseUrl() {
+    return this.baseUrl;
+  }
+
+  /**
+   * Obtiene el ID del evento (hardcoded)
+   * @returns {string} ID del evento
+   */
+  getEventId() {
+    return this.eventId;
+  }
+
+  /**
+   * Obtiene el ID de la experiencia (hardcoded)
+   * @returns {string} ID de la experiencia
+   */
+  getEventExperienceId() {
+    return this.eventExperienceId;
+  }
 }
+
+// Exportar instancia del SDK
+const sdk = new EdgeDataHubSDK();
+export { sdk };
 
 // ===== TIPOS TYPESCRIPT (JSDoc para autocompletado) =====
 
 /**
- * @typedef {Object} SDKConfig
- * @property {string} baseUrl - URL base del servidor Edge DataHub
+ * @typedef {Object} AttendeeStatusResponse
+ * @property {string} message - Mensaje de respuesta
+ * @property {Object} status - Status del asistente
+ * @property {string} status.id - ID del asistente
+ * @property {string} status.eventId - ID del evento
+ * @property {string} status.fullName - Nombre completo
+ * @property {string} status.email - Email
+ * @property {string} [status.checkInAt] - Fecha de check-in
+ * @property {number} status.totalPoints - Puntos totales
+ * @property {number} status.redemptionPoints - Puntos redimidos
  */
 
 /**
@@ -177,11 +252,44 @@ class EdgeDataHubSDK {
  */
 
 /**
+ * @typedef {Object} ExperiencePlayResponse
+ * @property {string} message - Mensaje de respuesta
+ * @property {Object} [experiencePlay] - Datos de la jugada registrada
+ * @property {string} experiencePlay.id - ID de la jugada
+ * @property {string} experiencePlay.attendeeId - ID del asistente
+ * @property {string} experiencePlay.eventExperienceId - ID de la experiencia
+ * @property {string} experiencePlay.play_timestamp - Timestamp de la jugada
+ * @property {number} experiencePlay.score - Puntuación obtenida
+ * @property {number} [experiencePlay.bonusScore] - Puntuación bonus
+ * @property {string} [experiencePlay.modePoints] - Modo de puntos
+ * @property {Object} [experiencePlay.data] - Datos adicionales
+ */
+
+/**
  * @typedef {Object} RedemptionRequest
  * @property {string} attendeeId - ID del asistente (REQUERIDO)
  * @property {number} pointsRedeemed - Puntos a redimir (REQUERIDO)
  * @property {string} reason - Motivo de la redención (REQUERIDO)
  * @description eventId se agrega automáticamente (está quemado en el código)
+ */
+
+/**
+ * @typedef {Object} RedemptionResponse
+ * @property {string} message - Mensaje de respuesta
+ * @property {Object} [redemption] - Datos de la redención registrada
+ * @property {string} redemption.id - ID de la redención
+ * @property {string} redemption.attendeeId - ID del asistente
+ * @property {string} redemption.eventId - ID del evento
+ * @property {number} redemption.pointsRedeemed - Puntos redimidos
+ * @property {string} redemption.reason - Motivo de la redención
+ * @property {string} redemption.timestamp - Timestamp de la redención
+ */
+
+/**
+ * @typedef {Object} ErrorResponse
+ * @property {string} message - Mensaje de error
+ * @property {string} [error] - Detalle del error
+ * @property {number} [statusCode] - Código de estado HTTP
  */
 
 /**
